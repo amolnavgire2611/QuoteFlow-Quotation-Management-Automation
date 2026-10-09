@@ -5,7 +5,7 @@ import {
 } from "react-router-dom";
 
 import AppLayout from "./layouts/AppLayout";
-
+import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Products from "./pages/Products";
@@ -14,6 +14,8 @@ import QuotationCreate from "./pages/QuotationCreate";
 import QuotationDetail from "./pages/QuotationDetail";
 import RevisionEditor from "./pages/RevisionEditor";
 import RevisionCompare from "./pages/RevisionCompare";
+import QuotationReminders from "./pages/QuotationReminders";
+import Reports from "./pages/Reports";
 function Placeholder({ title }) {
   return (
     <div className="placeholder-page">
@@ -87,20 +89,20 @@ function App() {
           {/* Reports */}
           <Route
             path="/reports"
-            element={
-              <Placeholder title="Reports" />
-            }
+            element={<Reports />}
           />
 
           {/* Settings */}
           <Route
             path="/settings"
-            element={
-              <Placeholder title="Settings" />
-            }
+            element={<Settings />}
           />
 
         </Route>
+        <Route
+  path="/quotation-reminders"
+  element={<QuotationReminders />}
+/>
 
       </Routes>
     </BrowserRouter>

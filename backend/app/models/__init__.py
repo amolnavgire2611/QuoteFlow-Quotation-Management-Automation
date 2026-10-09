@@ -7,6 +7,9 @@ from app.models.quotation_email import QuotationEmail
 from app.models.quotation_revision import QuotationRevision
 from app.models.quotation_revision_item import QuotationRevisionItem
 from app.models.audit_log import AuditLog
+from app.models.quotation_reminder_setting import (
+    QuotationReminderSetting,
+)
 __all__ = [
     "Company",
     "Customer",
@@ -15,5 +18,6 @@ __all__ = [
     "QuotationItem",
     "QuotationEmail",
     "QuotationRevision",
-    "QuotationRevisionItem"
+    "QuotationRevisionItem",
+    "QuotationReminderSetting"
 ]
