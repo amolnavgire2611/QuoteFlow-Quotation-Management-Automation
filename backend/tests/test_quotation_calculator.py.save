@@ -1,0 +1,207 @@
+```python
+from decimal import Decimal
+
+from app.services.quotation_calculator import (
+    money,
+    calculate_item,
+    calculate_quotation_totals,
+)
+
+
+def D(value):
+    """Convert a value to Decimal without float precision issues."""
+    return Decimal(str(value))
+
+
+def test_money_rounds_half_up():
+    assert money(D("10.125")) == D("10.13")
+    assert money(D("10.124")) == D("10.12")
+    assert money(D("10.005")) == D("10.01")
+    assert money(D("10.004")) == D("10.00")
+
+
+def test_calculate_item_without_discount():
+    result = calculate_item(
+        quantity=D("2"),
+        unit_price=D("100.00"),
+        discount_percent=D("0"),
+        gst_rate=D("18"),
+    )
+
+    assert result == {
+        "gross_amount": D("200.00"),
+        "discount_amount": D("0.00"),
+        "taxable_amount": D("200.00"),
+        "gst_amount": D("36.00"),
+        "total_amount": D("236.00"),
+    }
+
+
+def test_calculate_item_with_discount_and_gst():
+    result = calculate_item(
+        quantity=D("3"),
+        unit_price=D("100.00"),
+        discount_percent=D("10"),
+        gst_rate=D("18"),
+    )
+
+    assert result == {
+        "gross_amount": D("300.00"),
+        "discount_amount": D("30.00"),
+        "taxable_amount": D("270.00"),
+        "gst_amount": D("48.60"),
+        "total_amount": D("318.60"),
+    }
+
+
+def test_calculate_item_with_fractional_amounts():
+    result = calculate_item(
+        quantity=D("3"),
+        unit_price=D("19.99"),
+        discount_percent=D("10"),
+        gst_rate=D("18"),
+    )
+
+    assert result == {
+        "gross_amount": D("59.97"),
+        "discount_amount": D("6.00"),
+        "taxable_amount": D("53.97"),
+        "gst_amount": D("9.72"),
+        "total_amount": D("63.69"),
+    }
+
+
+def test_calculate_item_with_zero_gst():
+    result = calculate_item(
+        quantity=D("5"),
+        unit_price=D("20"),
+        discount_percent=D("0"),
+        gst_rate=D("0"),
+    )
+
+    assert result == {
+        "gross_amount": D("100.00"),
+        "discount_amount": D("0.00"),
+        "taxable_amount": D("100.00"),
+        "gst_amount": D("0.00"),
+        "total_amount": D("100.00"),
+    }
+
+
+def test_calculate_item_rounds_half_up():
+    result = calculate_item(
+        quantity=D("1"),
+        unit_price=D("1.005"),
+        discount_percent=D("0"),
+        gst_rate=D("0"),
+    )
+
+    assert result["gross_amount"] == D("1.01")
+    assert result["taxable_amount"] == D("1.01")
+    assert result["total_amount"] == D("1.01")
+
+
+def test_same_state_quotation_totals():
+    items = [
+        {
+            "gross_amount": D("100.00"),
+            "discount_amount": D("10.00"),
+            "taxable_amount": D("90.00"),
+            "gst_amount": D("16.20"),
+        },
+        {
+            "gross_amount": D("200.00"),
+            "discount_amount": D("20.00"),
+            "taxable_amount": D("180.00"),
+            "gst_amount": D("32.40"),
+        },
+    ]
+
+    result = calculate_quotation_totals(
+        items=items,
+        is_same_state=True,
+    )
+
+    assert result == {
+        "subtotal": D("300.00"),
+        "discount_amount": D("30.00"),
+        "taxable_amount": D("270.00"),
+        "cgst_amount": D("24.30"),
+        "sgst_amount": D("24.30"),
+        "igst_amount": D("0.00"),
+        "grand_total": D("318.60"),
+    }
+
+
+def test_interstate_quotation_totals():
+    items = [
+        {
+            "gross_amount": D("100.00"),
+            "discount_amount": D("10.00"),
+            "taxable_amount": D("90.00"),
+            "gst_amount": D("16.20"),
+        },
+        {
+            "gross_amount": D("200.00"),
+            "discount_amount": D("20.00"),
+            "taxable_amount": D("180.00"),
+            "gst_amount": D("32.40"),
+        },
+    ]
+
+    result = calculate_quotation_totals(
+        items=items,
+        is_same_state=False,
+    )
+
+    assert result == {
+        "subtotal": D("300.00"),
+        "discount_amount": D("30.00"),
+        "taxable_amount": D("270.00"),
+        "cgst_amount": D("0.00"),
+        "sgst_amount": D("0.00"),
+        "igst_amount": D("48.60"),
+        "grand_total": D("318.60"),
+    }
+
+
+def test_empty_quotation_totals():
+    result = calculate_quotation_totals(
+        items=[],
+        is_same_state=True,
+    )
+
+    assert result == {
+        "subtotal": D("0.00"),
+        "discount_amount": D("0.00"),
+        "taxable_amount": D("0.00"),
+        "cgst_amount": D("0.00"),
+        "sgst_amount": D("0.00"),
+        "igst_amount": D("0.00"),
+        "grand_total": D("0.00"),
+    }
+
+
+def test_single_item_quotation_totals():
+    item = calculate_item(        quantity=D("2"),
+        unit_price=D("500"),
+        discount_percent=D("5"),
+        gst_rate=D("18"),
+    )
+
+    result = calculate_quotation_totals(
+        items=[item],
+        is_same_state=False,
+    )
+
+    assert result == {
+        "subtotal": D("1000.00"),
+        "discount_amount": D("50.00"),
+        "taxable_amount": D("950.00"),
+        "cgst_amount": D("0.00"),
+        "sgst_amount": D("0.00"),
+        "igst_amount": D("171.00"),
+        "grand_total": D("1121.00"),
+    }
+```
+
