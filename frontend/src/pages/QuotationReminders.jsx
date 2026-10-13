@@ -1,19 +1,12 @@
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Settings2, RefreshCw } from "lucide-react";
 import api from "../services/api";
+import { formatDateTime, getDefaultReportDateRange } from "../utils/dates";
 import "./QuotationReminders.css";
 
 const STATUSES = ["ALL", "PENDING", "SENT", "FAILED"];
-
-function formatDate(value) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleString("en-IN");
-}
 
 export default function QuotationReminders() {
   const [summary, setSummary] = useState({
@@ -25,8 +18,9 @@ export default function QuotationReminders() {
 
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("ALL");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [defaultDateRange] = useState(getDefaultReportDateRange);
+  const [dateFrom, setDateFrom] = useState(defaultDateRange.date_from);
+  const [dateTo, setDateTo] = useState(defaultDateRange.date_to);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -82,8 +76,9 @@ export default function QuotationReminders() {
 
   function resetFilters() {
     setStatus("ALL");
-    setDateFrom("");
-    setDateTo("");
+    const defaults = getDefaultReportDateRange();
+    setDateFrom(defaults.date_from);
+    setDateTo(defaults.date_to);
     setPage(1);
   }
 
@@ -98,18 +93,25 @@ export default function QuotationReminders() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="reminder-refresh"
-          onClick={() => {
-            loadSummary().catch(() => {
-              setError("Unable to refresh reminder summary.");
-            });
-            loadHistory();
-          }}
-        >
-          Refresh
-        </button>
+        <div className="reminders-heading-actions">
+          <Link className="reminder-settings-link" to="/reminder-settings">
+            <Settings2 size={17} />
+            Reminder settings
+          </Link>
+          <button
+            type="button"
+            className="reminder-refresh"
+            onClick={() => {
+              loadSummary().catch(() => {
+                setError("Unable to refresh reminder summary.");
+              });
+              loadHistory();
+            }}
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="reminder-metrics">
@@ -202,7 +204,14 @@ export default function QuotationReminders() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
-                    <td>{item.quotation_number}</td>
+                    <td>
+                      <Link
+                        className="reminder-quotation-link"
+                        to={`/quotations/${item.quotation_id}`}
+                      >
+                        {item.quotation_number}
+                      </Link>
+                    </td>
                     <td>{item.recipient_email}</td>
                     <td>{item.subject}</td>
                     <td>
@@ -214,7 +223,7 @@ export default function QuotationReminders() {
                         {item.status}
                       </span>
                     </td>
-                    <td>{formatDate(item.sent_at)}</td>
+                    <td>{formatDateTime(item.sent_at)}</td>
                     <td className="reminder-error-cell">
                       {item.error_message || "—"}
                     </td>

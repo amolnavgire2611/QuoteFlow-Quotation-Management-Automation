@@ -27,6 +27,17 @@ class Product(Base):
         nullable=False,
     )
 
+    category: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        index=True,
+    )
+
+    image_path: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
     description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,

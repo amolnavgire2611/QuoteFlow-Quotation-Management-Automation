@@ -17,6 +17,15 @@ class Settings(BaseSettings):
 
     SMTP_USE_TLS: bool = True
 
+    JWT_SECRET_KEY: str = "quotation-automation-secret-key"
+
+    JWT_ALGORITHM: str = "HS256"
+
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+
+    ADMIN_USERNAME: str = "admin"
+
+    ADMIN_PASSWORD: str = "admin123"
 
     model_config = SettingsConfigDict(
         env_file=".env",

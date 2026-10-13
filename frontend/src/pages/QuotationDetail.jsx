@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import api from "../services/api";
+import { formatDate as formatCalendarDate } from "../utils/dates";
 
 
 function formatCurrency(value) {
@@ -30,21 +31,7 @@ function formatCurrency(value) {
 
 
 function formatDate(dateValue) {
-  if (!dateValue) {
-    return "-";
-  }
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateValue;
-  }
-
-  return date.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  return formatCalendarDate(dateValue);
 }
 
 
@@ -118,6 +105,27 @@ function QuotationDetail() {
 
   const [statusError, setStatusError] = useState("");
 
+  const [pdfTemplate, setPdfTemplate] = useState("classic");
+
+  const [availableTemplates, setAvailableTemplates] = useState([]);
+
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const { data } = await api.get("/quotations/pdf/templates");
+        setAvailableTemplates(data);
+        if (data?.length && !data.some((item) => item.id === pdfTemplate)) {
+          setPdfTemplate(data[0].id);
+        }
+      } catch {
+        setAvailableTemplates([]);
+      }
+    };
+
+    loadTemplates();
+  }, []);
+
 
   // ============================================================
   // LOAD QUOTATION
@@ -167,10 +175,15 @@ function QuotationDetail() {
       return;
     }
 
-    window.open(
-      `http://127.0.0.1:8000/quotations/${quotation.id}/pdf`,
-      "_blank"
-    );
+    const pdfUrl = new URL(`http://127.0.0.1:8000/quotations/${quotation.id}/pdf`);
+    pdfUrl.searchParams.set("template", pdfTemplate);
+    window.open(pdfUrl.toString(), "_blank");
+  };
+
+  const handlePreviewPdfSample = () => {
+    const sampleUrl = new URL("http://127.0.0.1:8000/quotations/pdf/sample");
+    sampleUrl.searchParams.set("template", pdfTemplate);
+    window.open(sampleUrl.toString(), "_blank");
   };
 
 
@@ -615,15 +628,38 @@ QuoteFlow`
 
       <div className="quotation-action-bar">
 
-
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={handleGeneratePdf}
-        >
-          <FileDown size={17} />
-          Generate PDF
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <label htmlFor="quotation-pdf-template" style={{ fontWeight: 600 }}>Template</label>
+          <select
+            id="quotation-pdf-template"
+            value={pdfTemplate}
+            onChange={(event) => setPdfTemplate(event.target.value)}
+            style={{ minWidth: "130px" }}
+          >
+            {availableTemplates.length > 0 ? (
+              availableTemplates.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))
+            ) : (
+              <>
+                <option value="classic">Classic</option>
+                <option value="modern">Modern</option>
+              </>
+            )}
+          </select>
+          <button type="button" className="secondary-button" onClick={handlePreviewPdfSample}>
+            <FileDown size={17} />
+            Sample
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={handleGeneratePdf}
+          >
+            <FileDown size={17} />
+            Generate PDF
+          </button>
+        </div>
 
 
         {quotation.status === "DRAFT" && (

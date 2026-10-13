@@ -1,3 +1,4 @@
+import { formatDateTime } from "../utils/dates";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -66,20 +67,6 @@ const RevisionHistory = ({ quotationId }) => {
       currency: "INR",
       minimumFractionDigits: 2,
     }).format(Number(value) || 0);
-  };
-
-  const formatDate = (value) => {
-    if (!value) {
-      return "-";
-    }
-
-    return new Date(value).toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const getStatusClass = (status) => {
@@ -297,7 +284,7 @@ const RevisionHistory = ({ quotationId }) => {
 
                   <td>
                     <span className="revision-created-date">
-                      {formatDate(
+                      {formatDateTime(
                         revision.created_at
                       )}
                     </span>

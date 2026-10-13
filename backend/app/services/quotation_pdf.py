@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from io import BytesIO
 from decimal import Decimal
 
@@ -52,20 +53,142 @@ def format_currency(value: Decimal | float | int) -> str:
 
 
 # ============================================================
-# PDF GENERATOR
+# PDF TEMPLATE REGISTRY
 # ============================================================
+
+def get_available_quotation_pdf_templates() -> list[dict[str, str]]:
+    """Return the quotation PDF templates supported by the app."""
+
+    return [
+        {
+            "id": "classic",
+            "name": "Classic",
+            "description": "Traditional quotation format with a neutral layout.",
+        },
+        {
+            "id": "modern",
+            "name": "Modern",
+            "description": "A stronger brand-focused quotation layout.",
+        },
+    ]
+
+
+def generate_quotation_pdf_sample(
+    template_name: str = "classic",
+) -> BytesIO:
+    """Create a sample quotation PDF for preview purposes."""
+
+    sample_quotation = SimpleNamespace(
+        quotation_number="Q-1001",
+        quotation_date=date(2024, 1, 15),
+        valid_until=date(2024, 2, 15),
+        status="DRAFT",
+        items=[
+            SimpleNamespace(
+                product_name="Premium Office Chair",
+                description="Ergonomic mesh chair",
+                hsn_sac="9403",
+                unit="PCS",
+                quantity=2,
+                unit_price=18500,
+                discount_percent=5,
+                gst_rate=18,
+                total_amount=36900,
+            )
+        ],
+        subtotal=37000,
+        discount_amount=1850,
+        taxable_amount=35150,
+        cgst_amount=3163.5,
+        sgst_amount=3163.5,
+        igst_amount=0,
+        grand_total=41477,
+        notes="Thank you for your enquiry. Please confirm the final order quantity.",
+        terms_conditions="Payment terms: 50% advance and balance on delivery.",
+    )
+
+    sample_customer = SimpleNamespace(
+        company_name="Northwind Enterprises",
+        contact_person="Nisha Patel",
+        billing_address="45 Lavelle Road, Bengaluru",
+        address="45 Lavelle Road, Bengaluru",
+        state="Karnataka",
+        phone="9988776655",
+        email="nisha@northwind.example",
+        gstin="29ABCDE1234F1Z5",
+    )
+
+    sample_company = SimpleNamespace(
+        name="BluePeak Traders",
+        address="12 MG Road, Bengaluru",
+        state="Karnataka",
+        phone="9988776655",
+        email="sales@bluepeak.example",
+        gstin="29ABCDE1234F1Z5",
+        pan="ABCDE1234F",
+        logo_path=None,
+    )
+
+    return generate_quotation_pdf(
+        quotation=sample_quotation,
+        customer=sample_customer,
+        company=sample_company,
+        template_name=template_name,
+    )
+
 
 def generate_quotation_pdf(
     quotation: Quotation,
     customer: Customer,
     company: Company,
+    template_name: str = "classic",
 ) -> BytesIO:
     """
-    Generate a quotation PDF using ReportLab.
+    Generate a quotation PDF using the requested template.
 
     Returns:
         BytesIO containing the generated PDF.
     """
+
+    normalized_template = (template_name or "classic").strip().lower()
+
+    if normalized_template == "modern":
+        return generate_quotation_pdf_modern(
+            quotation=quotation,
+            customer=customer,
+            company=company,
+        )
+
+    return generate_quotation_pdf_classic(
+        quotation=quotation,
+        customer=customer,
+        company=company,
+    )
+
+
+def _as_date(value):
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except ValueError:
+        return value
+
+
+# ============================================================
+# CLASSIC QUOTATION PDF TEMPLATE
+# ============================================================
+
+def generate_quotation_pdf_classic(
+    quotation: Quotation,
+    customer: Customer,
+    company: Company,
+) -> BytesIO:
+    """Generate the original quotation PDF layout."""
 
     buffer = BytesIO()
 
@@ -972,8 +1095,229 @@ def generate_quotation_pdf(
 
     return buffer
 
-from types import SimpleNamespace
 
+def generate_quotation_pdf_modern(
+    quotation: Quotation,
+    customer: Customer,
+    company: Company,
+) -> BytesIO:
+    """Generate a modern quotation PDF layout with a more polished presentation."""
+
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=RIGHT_MARGIN,
+        leftMargin=LEFT_MARGIN,
+        topMargin=TOP_MARGIN,
+        bottomMargin=BOTTOM_MARGIN,
+        title=quotation.quotation_number,
+        author=getattr(company, "name", "Quotation"),
+    )
+
+    styles = getSampleStyleSheet()
+    brand = colors.HexColor("#1d4ed8")
+    soft = colors.HexColor("#eff6ff")
+    dark = colors.HexColor("#111827")
+    muted = colors.HexColor("#6b7280")
+
+    title_style = ParagraphStyle(
+        "ModernTitle",
+        parent=styles["Heading1"],
+        fontSize=22,
+        leading=26,
+        textColor=brand,
+        alignment=TA_CENTER,
+        spaceAfter=5,
+    )
+    subtitle_style = ParagraphStyle(
+        "ModernSubtitle",
+        parent=styles["Heading2"],
+        fontSize=12,
+        leading=15,
+        textColor=muted,
+        alignment=TA_CENTER,
+        spaceAfter=12,
+    )
+    card_title_style = ParagraphStyle(
+        "CardTitle",
+        parent=styles["Normal"],
+        fontSize=10,
+        leading=12,
+        textColor=brand,
+        fontName="Helvetica-Bold",
+        spaceAfter=6,
+    )
+    normal_style = ParagraphStyle(
+        "ModernNormal",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        textColor=dark,
+    )
+    right_style = ParagraphStyle(
+        "ModernRight",
+        parent=styles["Normal"],
+        fontSize=9,
+        leading=12,
+        alignment=TA_RIGHT,
+        textColor=dark,
+    )
+    small_style = ParagraphStyle(
+        "ModernSmall",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        textColor=muted,
+    )
+    header_style = ParagraphStyle(
+        "ModernHeader",
+        parent=styles["Normal"],
+        fontSize=8,
+        leading=10,
+        alignment=TA_CENTER,
+        textColor=colors.white,
+        fontName="Helvetica-Bold",
+    )
+
+    story = []
+    story.append(Paragraph(getattr(company, "name", "Quotation"), title_style))
+    story.append(Paragraph("QUOTATION", subtitle_style))
+
+    company_details = []
+    if getattr(company, "address", None):
+        company_details.append(company.address)
+    if getattr(company, "state", None):
+        company_details.append(company.state)
+    if getattr(company, "phone", None):
+        company_details.append(f"Phone: {company.phone}")
+    if getattr(company, "email", None):
+        company_details.append(f"Email: {company.email}")
+    if getattr(company, "gstin", None):
+        company_details.append(f"GSTIN: {company.gstin}")
+
+    if company_details:
+        story.append(Paragraph("<br/>".join(company_details), small_style))
+
+    story.append(Spacer(1, 4 * mm))
+
+    quote_info = [
+        [Paragraph("Quotation No.", card_title_style), Paragraph(quotation.quotation_number, normal_style), Paragraph("Date", card_title_style), Paragraph(_as_date(quotation.quotation_date).strftime("%d/%m/%Y") if _as_date(quotation.quotation_date) else "-", normal_style)],
+        [Paragraph("Valid Until", card_title_style), Paragraph(_as_date(quotation.valid_until).strftime("%d/%m/%Y") if _as_date(quotation.valid_until) else "-", normal_style), Paragraph("Status", card_title_style), Paragraph(quotation.status, normal_style)],
+    ]
+    info_table = Table(quote_info, colWidths=[32 * mm, 58 * mm, 32 * mm, 58 * mm])
+    info_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), soft),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#dbeafe")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 6 * mm))
+
+    customer_data = [
+        [Paragraph("Bill To", card_title_style)],
+        [Paragraph(
+            "<b>{}</b><br/>{}<br/>{}<br/>{}<br/>{}<br/>{}".format(
+                getattr(customer, "company_name", "Customer"),
+                getattr(customer, "contact_person", ""),
+                getattr(customer, "billing_address", None) or getattr(customer, "address", "-"),
+                getattr(customer, "state", ""),
+                f"Phone: {customer.phone}" if getattr(customer, "phone", None) else "",
+                f"Email: {customer.email}" if getattr(customer, "email", None) else "",
+            ).replace("<br/>{}", "<br/>") if False else "",
+            normal_style,
+        )],
+    ]
+    customer_text_lines = [f"<b>{getattr(customer, 'company_name', 'Customer')}</b>"]
+    if getattr(customer, 'contact_person', None):
+        customer_text_lines.append(f"Contact: {customer.contact_person}")
+    customer_text_lines.append(getattr(customer, 'billing_address', None) or getattr(customer, 'address', '-'))
+    if getattr(customer, 'state', None):
+        customer_text_lines.append(customer.state)
+    if getattr(customer, 'phone', None):
+        customer_text_lines.append(f"Phone: {customer.phone}")
+    if getattr(customer, 'email', None):
+        customer_text_lines.append(f"Email: {customer.email}")
+    if getattr(customer, 'gstin', None):
+        customer_text_lines.append(f"GSTIN: {customer.gstin}")
+
+    customer_table = Table([[Paragraph("BILL TO", card_title_style)], [Paragraph("<br/>".join(customer_text_lines), normal_style)]], colWidths=[180 * mm])
+    customer_table.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.5, brand),
+        ("BACKGROUND", (0, 0), (-1, 0), soft),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(customer_table)
+    story.append(Spacer(1, 6 * mm))
+
+    item_header = [Paragraph("#", header_style), Paragraph("Product", header_style), Paragraph("HSN/SAC", header_style), Paragraph("Qty", header_style), Paragraph("Rate", header_style), Paragraph("Disc.", header_style), Paragraph("GST", header_style), Paragraph("Amount", header_style)]
+    item_rows = [item_header]
+    for index, item in enumerate(quotation.items, start=1):
+        product_text = f"<b>{item.product_name}</b>"
+        if getattr(item, 'description', None):
+            product_text += f"<br/><font size='7' color='#6b7280'>{item.description}</font>"
+        item_rows.append([
+            Paragraph(str(index), small_style),
+            Paragraph(product_text, small_style),
+            Paragraph(item.hsn_sac or "-", small_style),
+            Paragraph(f"{item.quantity} {item.unit}", small_style),
+            Paragraph(format_currency(item.unit_price), right_style),
+            Paragraph(f"{item.discount_percent:.2f}%", right_style),
+            Paragraph(f"{item.gst_rate:.2f}%", right_style),
+            Paragraph(format_currency(item.total_amount), right_style),
+        ])
+
+    item_table = Table(item_rows, colWidths=[9 * mm, 55 * mm, 20 * mm, 20 * mm, 25 * mm, 18 * mm, 17 * mm, 26 * mm], repeatRows=1)
+    item_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), brand),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dbeafe")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fbff")]),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(item_table)
+    story.append(Spacer(1, 5 * mm))
+
+    totals = [
+        ["", "Subtotal", format_currency(quotation.subtotal)],
+        ["", "Discount", f"- {format_currency(quotation.discount_amount)}"],
+        ["", "Taxable Amount", format_currency(quotation.taxable_amount)],
+    ]
+    if quotation.cgst_amount > 0:
+        totals.append(["", "CGST", format_currency(quotation.cgst_amount)])
+    if quotation.sgst_amount > 0:
+        totals.append(["", "SGST", format_currency(quotation.sgst_amount)])
+    if quotation.igst_amount > 0:
+        totals.append(["", "IGST", format_currency(quotation.igst_amount)])
+    totals.append(["", "<b>GRAND TOTAL</b>", f"<b>{format_currency(quotation.grand_total)}</b>"])
+    totals_table = Table(totals, colWidths=[90 * mm, 45 * mm, 45 * mm])
+    totals_table.setStyle(TableStyle([
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("LINEABOVE", (1, -1), (-1, -1), 1.2, brand),
+        ("TOPPADDING", (1, -1), (-1, -1), 8),
+        ("BOTTOMPADDING", (1, -1), (-1, -1), 8),
+    ]))
+    story.append(totals_table)
+    if quotation.notes:
+        story.append(Spacer(1, 5 * mm))
+        story.append(Table([[Paragraph("NOTES", card_title_style)], [Paragraph(quotation.notes.replace("\n", "<br/>"), small_style)]], colWidths=[180 * mm]))
+    if quotation.terms_conditions:
+        story.append(Spacer(1, 5 * mm))
+        story.append(Table([[Paragraph("TERMS & CONDITIONS", card_title_style)], [Paragraph(quotation.terms_conditions.replace("\n", "<br/>"), small_style)]], colWidths=[180 * mm]))
+    story.append(Spacer(1, 8 * mm))
+    story.append(Paragraph("This is a computer-generated quotation.", ParagraphStyle("Footer", parent=small_style, alignment=TA_CENTER, textColor=muted)))
+    document.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+from types import SimpleNamespace
 
 
 from types import SimpleNamespace

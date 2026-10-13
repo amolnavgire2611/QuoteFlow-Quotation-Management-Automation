@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -9,6 +11,7 @@ from app.schemas.customer import (
     CustomerResponse,
     CustomerUpdate,
 )
+from app.utils.excel_import import excel_template, read_excel_rows
 
 
 router = APIRouter(
@@ -88,6 +91,53 @@ def get_customers(
         .limit(limit)
         .all()
     )
+
+
+@router.get("/import/template")
+def customer_import_template():
+    return excel_template(
+        "customers-import-template.xlsx",
+        ["company_name", "contact_person", "email", "phone", "address", "billing_address", "shipping_address", "gstin", "pan", "state", "country"],
+    )
+
+
+@router.post("/import")
+async def import_customers(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    if Path(file.filename or "").suffix.lower() != ".xlsx":
+        raise HTTPException(status_code=400, detail="Upload an Excel .xlsx file.")
+
+    rows = read_excel_rows(await file.read(10 * 1024 * 1024 + 1))
+    if len(rows) > 2000:
+        raise HTTPException(status_code=400, detail="Excel imports are limited to 2,000 data rows.")
+
+    existing_names = {name.strip().casefold() for (name,) in db.query(Customer.company_name).all()}
+    added_names = set()
+    errors = []
+    imported = 0
+
+    for row_number, raw in rows:
+        try:
+            customer_data = CustomerCreate.model_validate(raw)
+            name = customer_data.company_name.strip()
+            key = name.casefold()
+            if key in existing_names or key in added_names:
+                raise ValueError(f"Customer '{name}' already exists.")
+            values = customer_data.model_dump()
+            values["company_name"] = name
+            db.add(Customer(**values))
+            added_names.add(key)
+            imported += 1
+        except Exception as exc:
+            errors.append({"row": row_number, "message": str(exc)})
+
+    if imported:
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Unable to import customers because of a data conflict.") from exc
+
+    return {"imported": imported, "failed": len(errors), "errors": errors[:100]}
 
 
 @router.get(

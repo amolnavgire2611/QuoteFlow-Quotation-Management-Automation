@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react";
+import { ImagePlus, Upload, X } from "lucide-react";
 import api from "../services/api";
 import "./Settings.css";
 
@@ -23,7 +24,6 @@ const fields = [
   { name: "state", label: "State" },
   { name: "gstin", label: "GSTIN" },
   { name: "pan", label: "PAN" },
-  { name: "logo_path", label: "Company Logo Path" },
 ];
 
 export default function Settings() {
@@ -32,6 +32,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +44,10 @@ export default function Settings() {
 
         if (active) {
           setForm({ ...initialForm, ...response.data });
+          if (response.data.logo_path) {
+            const filename = response.data.logo_path.split(/[\\/]/).pop();
+            setLogoPreview(`${api.defaults.baseURL}/uploads/${encodeURIComponent(filename)}`);
+          }
         }
       } catch (err) {
         if (!active) return;
@@ -78,6 +84,39 @@ export default function Settings() {
     setError("");
   }
 
+  async function handleLogoUpload(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!/^image\/(png|jpeg)$/.test(file.type)) {
+      setError("Choose a PNG or JPEG image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Logo files must be 5 MB or smaller.");
+      return;
+    }
+
+    setUploadingLogo(true);
+    setError("");
+    setMessage("");
+    try {
+      const payload = new FormData();
+      payload.append("file", file);
+      const { data } = await api.post("/settings/company/logo", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setForm((current) => ({ ...current, logo_path: data.logo_path }));
+      setLogoPreview(`${api.defaults.baseURL}${data.logo_url}`);
+      setMessage("Logo uploaded. Save settings to apply it to quotations.");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Unable to upload company logo.");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setSaving(true);
@@ -102,6 +141,7 @@ export default function Settings() {
 
       setForm({ ...initialForm, ...response.data });
       setMessage("Company settings saved successfully.");
+      window.dispatchEvent(new Event("company-branding-updated"));
     } catch (err) {
       const detail = err.response?.data?.detail;
 
@@ -149,18 +189,56 @@ export default function Settings() {
 
       <form className="settings-card" onSubmit={handleSubmit}>
         <div className="settings-section-heading">
-          <h2>Business Information</h2>
-          <p>Enter your official company details.</p>
+          <div>
+            <span className="settings-eyebrow">COMPANY PROFILE</span>
+            <h2>Business Information</h2>
+            <p>Enter your official company details.</p>
+          </div>
         </div>
+
+        <section className="settings-brand-panel" aria-label="Company logo">
+          <div className="settings-logo-preview">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Company logo preview" />
+            ) : (
+              <ImagePlus size={28} />
+            )}
+          </div>
+          <div className="settings-brand-copy">
+            <strong>Company logo</strong>
+            <span>PNG or JPEG, up to 5 MB. Used on quotation PDFs and in the navigation.</span>
+            <div className="settings-brand-actions">
+              <label className="settings-upload-button">
+                <Upload size={16} />
+                {uploadingLogo ? "Uploading..." : logoPreview ? "Replace logo" : "Upload logo"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleLogoUpload}
+                  disabled={uploadingLogo || saving}
+                />
+              </label>
+              {logoPreview && (
+                <button
+                  type="button"
+                  className="settings-remove-logo"
+                  onClick={() => {
+                    setLogoPreview("");
+                    setForm((current) => ({ ...current, logo_path: "" }));
+                    setMessage("Logo removed. Save settings to apply this change.");
+                  }}
+                  disabled={saving || uploadingLogo}
+                >
+                  <X size={15} /> Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
 
         <div className="settings-form-grid">
           {fields.map((field) => (
-            <div
-              className={`settings-field ${
-                field.name === "logo_path" ? "settings-field-full" : ""
-              }`}
-              key={field.name}
-            >
+            <div className="settings-field" key={field.name}>
               <label htmlFor={field.name}>
                 {field.label}
                 {field.required && <span className="settings-required"> *</span>}
@@ -173,12 +251,7 @@ export default function Settings() {
                 value={form[field.name] || ""}
                 onChange={handleChange}
                 required={field.required || false}
-                maxLength={field.name === "logo_path" ? 500 : undefined}
-                placeholder={
-                  field.name === "logo_path"
-                    ? "Optional: server-accessible logo file path"
-                    : `Enter ${field.label.toLowerCase()}`
-                }
+                placeholder={`Enter ${field.label.toLowerCase()}`}
               />
             </div>
           ))}
@@ -196,18 +269,13 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="settings-note">
-          <strong>Logo note:</strong> This field stores a file path only;
-          it does not upload an image. The path must be accessible to the
-          backend for PDF generation to use it.
-        </div>
-
         <div className="settings-actions">
           <button
             type="button"
             className="settings-button settings-button-secondary"
             onClick={() => {
               setForm(initialForm);
+              setLogoPreview("");
               setMessage("");
               setError("");
             }}

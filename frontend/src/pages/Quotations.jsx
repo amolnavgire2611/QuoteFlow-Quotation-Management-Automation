@@ -6,8 +6,9 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { formatDate as formatCalendarDate } from "../utils/dates";
 
 function Quotations() {
   const navigate = useNavigate();
@@ -73,13 +74,7 @@ function Quotations() {
   };
 
   const formatDate = (value) => {
-    if (!value) {
-      return "-";
-    }
-
-    return new Date(
-      `${value}T00:00:00`
-    ).toLocaleDateString("en-IN");
+    return formatCalendarDate(value);
   };
 
   const getStatusClass = (status) => {
@@ -276,9 +271,12 @@ function Quotations() {
                     <tr key={quotation.id}>
 
                       <td>
-                        <strong>
+                        <Link
+                          className="quotation-link-button"
+                          to={`/quotations/${quotation.id}`}
+                        >
                           {quotation.quotation_number}
-                        </strong>
+                        </Link>
                       </td>
 
                       <td>

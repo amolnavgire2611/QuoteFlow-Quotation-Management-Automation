@@ -1,5 +1,8 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -13,6 +16,49 @@ router = APIRouter(
     prefix="/settings",
     tags=["Settings"],
 )
+
+LOGO_DIRECTORY = Path(__file__).resolve().parents[2] / "generated" / "logos"
+MAX_LOGO_SIZE = 5 * 1024 * 1024
+ALLOWED_LOGO_TYPES = {"image/png": ".png", "image/jpeg": ".jpg"}
+
+
+@router.post("/company/logo")
+async def upload_company_logo(file: UploadFile = File(...)):
+    """Store a company logo and return its path for quotation PDFs."""
+    extension = ALLOWED_LOGO_TYPES.get(file.content_type or "")
+    if extension is None:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Upload a PNG or JPEG image.",
+        )
+
+    contents = await file.read(MAX_LOGO_SIZE + 1)
+    if not contents:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The uploaded logo is empty.",
+        )
+    signature_is_valid = (
+        contents.startswith(b"\x89PNG\r\n\x1a\n")
+        if extension == ".png"
+        else contents.startswith(b"\xff\xd8\xff")
+    )
+    if not signature_is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="The file contents do not match a PNG or JPEG image.",
+        )
+    if len(contents) > MAX_LOGO_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail="Logo files must be 5 MB or smaller.",
+        )
+
+    LOGO_DIRECTORY.mkdir(parents=True, exist_ok=True)
+    logo_path = LOGO_DIRECTORY / f"{uuid4().hex}{extension}"
+    logo_path.write_bytes(contents)
+
+    return {"logo_path": str(logo_path), "logo_url": f"/uploads/{logo_path.name}"}
 
 
 def get_company_settings(db: Session) -> Company:

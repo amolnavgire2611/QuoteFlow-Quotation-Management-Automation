@@ -4,6 +4,10 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class ProductCategoryCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+
+
 class ProductBase(BaseModel):
     product_code: str = Field(
         ...,
@@ -16,6 +20,10 @@ class ProductBase(BaseModel):
         min_length=2,
         max_length=200,
     )
+
+    category: str | None = Field(default=None, max_length=100)
+
+    image_path: str | None = Field(default=None, max_length=500)
 
     description: str | None = None
 
@@ -58,6 +66,10 @@ class ProductUpdate(BaseModel):
         min_length=2,
         max_length=200,
     )
+
+    category: str | None = Field(default=None, max_length=100)
+
+    image_path: str | None = Field(default=None, max_length=500)
 
     description: str | None = None
 

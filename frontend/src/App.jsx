@@ -2,6 +2,8 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate,
+  Outlet,
 } from "react-router-dom";
 
 import AppLayout from "./layouts/AppLayout";
@@ -16,94 +18,65 @@ import RevisionEditor from "./pages/RevisionEditor";
 import RevisionCompare from "./pages/RevisionCompare";
 import QuotationReminders from "./pages/QuotationReminders";
 import Reports from "./pages/Reports";
-function Placeholder({ title }) {
-  return (
-    <div className="placeholder-page">
-      <h2>{title}</h2>
-      <p>This module will be implemented next.</p>
-    </div>
-  );
+import Emails from "./pages/Emails";
+import Login from "./pages/Login";
+import Users from "./pages/Users";
+import QuotationReminderSettings from "./pages/QuotationReminderSettings";
+function ProtectedRoute() {
+  const token = localStorage.getItem("quoteflow_token");
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />;
+}
+
+function AdminRoute() {
+  const storedUser = localStorage.getItem("quoteflow_user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+
+  if (!user || user.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
 }
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/login" element={<Login />} />
 
-        <Route element={<AppLayout />}>
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/quotations" element={<Quotations />} />
+            <Route path="/quotations/new" element={<QuotationCreate />} />
+            <Route path="/quotations/:quotationId" element={<QuotationDetail />} />
+            <Route
+              path="/quotations/:quotationId/revisions/:revisionFrom/compare/:revisionTo"
+              element={<RevisionCompare />}
+            />
+            <Route
+              path="/quotations/:quotationId/revisions/:revisionNumber"
+              element={<RevisionEditor />}
+            />
+            <Route path="/emails" element={<Emails />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/quotation-reminders" element={<QuotationReminders />} />
+            <Route path="/reminder-settings" element={<QuotationReminderSettings />} />
 
-          {/* Dashboard */}
-          <Route
-            path="/"
-            element={<Dashboard />}
-          />
-
-          {/* Customers */}
-          <Route
-            path="/customers"
-            element={<Customers />}
-          />
-
-          {/* Products */}
-          <Route
-            path="/products"
-            element={<Products />}
-          />
-
-          {/* Quotations */}
-          <Route
-            path="/quotations"
-            element={<Quotations />}
-          />
-
-          {/* Create Quotation */}
-          <Route
-            path="/quotations/new"
-            element={<QuotationCreate />}
-          />
-
-          {/* Quotation Detail */}
-          <Route
-            path="/quotations/:quotationId"
-            element={<QuotationDetail />}
-          />
-          <Route
-  path="/quotations/:quotationId/revisions/:revisionFrom/compare/:revisionTo"
-  element={<RevisionCompare />}
-/>
-
-          {/* Revision Editor */}
-          <Route
-            path="/quotations/:quotationId/revisions/:revisionNumber"
-            element={<RevisionEditor />}
-          />
-
-          {/* Emails */}
-          <Route
-            path="/emails"
-            element={
-              <Placeholder title="Emails" />
-            }
-          />
-
-          {/* Reports */}
-          <Route
-            path="/reports"
-            element={<Reports />}
-          />
-
-          {/* Settings */}
-          <Route
-            path="/settings"
-            element={<Settings />}
-          />
+            <Route element={<AdminRoute />}>
+              <Route path="/users" element={<Users />} />
+            </Route>
+          </Route>
 
         </Route>
-        <Route
-  path="/quotation-reminders"
-  element={<QuotationReminders />}
-/>
-
       </Routes>
     </BrowserRouter>
   );

@@ -38,6 +38,8 @@ from app.services.email_service import send_email
 
 from app.services.quotation_pdf import (
     generate_quotation_pdf,
+    generate_quotation_pdf_sample,
+    get_available_quotation_pdf_templates,
 )
 
 from app.services.quotation_calculator import (
@@ -516,6 +518,38 @@ def get_quotations(
 
 
 # ============================================================
+# QUOTATION PDF TEMPLATES
+# ============================================================
+
+@router.get(
+    "/pdf/templates",
+)
+def get_quotation_pdf_templates():
+    return get_available_quotation_pdf_templates()
+
+
+@router.get(
+    "/pdf/sample",
+)
+def generate_quotation_pdf_sample_endpoint(
+    template: str = Query(default="classic", alias="template"),
+):
+    pdf_buffer = generate_quotation_pdf_sample(template_name=template)
+    filename = f"quotation-sample-{template}.pdf"
+    encoded_filename = quote(filename)
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": (
+                f'inline; filename="{filename}"; '
+                f"filename*=UTF-8''{encoded_filename}"
+            )
+        },
+    )
+
+
+# ============================================================
 # GENERATE QUOTATION PDF
 # ============================================================
 
@@ -524,6 +558,7 @@ def get_quotations(
 )
 def generate_quotation_pdf_endpoint(
     quotation_id: int,
+    template: str = Query(default="classic", alias="template"),
     db: Session = Depends(get_db),
 ):
     # --------------------------------------------------------
@@ -589,6 +624,7 @@ def generate_quotation_pdf_endpoint(
         quotation=quotation,
         customer=customer,
         company=company,
+        template_name=template,
     )
 
     # --------------------------------------------------------

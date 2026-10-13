@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getQuotationAuditLogs } from "../services/api";
+import { formatDateTime } from "../utils/dates";
 
 const AuditTrail = ({ quotationId }) => {
   const [logs, setLogs] = useState([]);
@@ -30,17 +31,6 @@ const AuditTrail = ({ quotationId }) => {
   useEffect(() => {
     loadAuditLogs();
   }, [quotationId]);
-
-  const formatDate = (value) => {
-    if (!value) {
-      return "-";
-    }
-
-    return new Date(value).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
-  };
 
   if (loading) {
     return (
@@ -104,7 +94,7 @@ const AuditTrail = ({ quotationId }) => {
                   </div>
 
                   <span className="audit-date">
-                    {formatDate(log.created_at)}
+                    {formatDateTime(log.created_at)}
                   </span>
                 </div>
 

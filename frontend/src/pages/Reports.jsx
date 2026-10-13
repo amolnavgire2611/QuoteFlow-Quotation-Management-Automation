@@ -1,12 +1,13 @@
 
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../services/api";
+import { formatDate, getDefaultReportDateRange } from "../utils/dates";
 import "./Reports.css";
 
-const initialFilters = {
-  date_from: "",
-  date_to: "",
-};
+function createInitialFilters() {
+  return getDefaultReportDateRange();
+}
 
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -16,15 +17,6 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 
 function formatCurrency(value) {
   return currencyFormatter.format(Number(value || 0));
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-
-  const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime())
-    ? String(value)
-    : date.toLocaleDateString("en-IN");
 }
 
 function downloadCsv(filename, rows) {
@@ -70,7 +62,7 @@ function getErrorMessage(error) {
 }
 
 export default function Reports() {
-  const [filters, setFilters] = useState(initialFilters);
+  const [filters, setFilters] = useState(createInitialFilters);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -102,7 +94,7 @@ export default function Reports() {
   }, []);
 
   useEffect(() => {
-    loadReports(initialFilters);
+    loadReports(createInitialFilters());
   }, [loadReports]);
 
   function handleFilterChange(event) {
@@ -130,8 +122,9 @@ export default function Reports() {
   }
 
   function handleClearFilters() {
-    setFilters(initialFilters);
-    loadReports(initialFilters);
+    const defaults = createInitialFilters();
+    setFilters(defaults);
+    loadReports(defaults);
   }
 
   function handleExportQuotations() {
@@ -401,7 +394,12 @@ export default function Reports() {
                     report.quotations.map((quotation) => (
                       <tr key={quotation.id}>
                         <td className="reports-quotation-number">
-                          {quotation.quotation_number}
+                          <Link
+                            className="quotation-link-button"
+                            to={`/quotations/${quotation.id}`}
+                          >
+                            {quotation.quotation_number}
+                          </Link>
                         </td>
                         <td>{quotation.customer_name}</td>
                         <td>{formatDate(quotation.quotation_date)}</td>

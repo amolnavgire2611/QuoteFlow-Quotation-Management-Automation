@@ -4,6 +4,11 @@ __pycache__/
 venv/
 .venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
 
 # Secrets
 .env
@@ -15,10 +20,14 @@ venv/
 *.sqlite
 *.sqlite3
 
+# Generated quotation PDFs and other runtime output
+backend/generated/
+
 # React
 node_modules/
 dist/
 build/
+coverage/
 
 # IDE
 .vscode/
@@ -26,3 +35,7 @@ build/
 
 # Logs
 *.log
+
+# Local keys and certificates
+*.pem
+*.key

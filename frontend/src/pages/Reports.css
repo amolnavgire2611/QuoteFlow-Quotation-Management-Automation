@@ -262,6 +262,17 @@
 
 .reports-alert {
   margin-bottom: 20px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reports-alert {
+  margin-bottom: 20px;
   padding: 13px 16px;
   color: #991b1b;
   background: #fef2f2;

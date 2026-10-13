@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Search,
   Pencil,
   UserX,
   Users,
+  Upload,
+  FileDown,
 } from "lucide-react";
 import api from "../services/api";
 import Modal from "../components/Modal";
@@ -41,6 +43,9 @@ function Customers() {
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
+  const [importMessage, setImportMessage] = useState("");
+  const [importing, setImporting] = useState(false);
+  const importInput = useRef(null);
 
   const loadCustomers = async () => {
     try {
@@ -50,6 +55,7 @@ function Customers() {
       const response = await api.get("/customers", {
         params: {
           search: search || undefined,
+          limit: 100,
         },
       });
 
@@ -167,6 +173,45 @@ function Customers() {
     }
   };
 
+  const importCustomers = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".xlsx")) {
+      setError("Select an .xlsx Excel workbook.");
+      return;
+    }
+
+    setImporting(true);
+    setError("");
+    setImportMessage("");
+    try {
+      const payload = new FormData();
+      payload.append("file", file);
+      const { data } = await api.post("/customers/import", payload, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setImportMessage(`${data.imported} customer(s) imported; ${data.failed} row(s) need correction.`);
+      if (data.errors?.length) {
+        setError(data.errors.slice(0, 5).map((item) => `Row ${item.row}: ${item.message}`).join(" "));
+      }
+      await loadCustomers();
+    } catch (err) {
+      setError(err.response?.data?.detail || "Unable to import customers.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const { data } = await api.get("/customers/import/template", { responseType: "blob" });
+      downloadBlob(data, "customers-import-template.xlsx");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Unable to download the Excel template.");
+    }
+  };
+
   return (
     <div>
       <div className="page-title">
@@ -177,14 +222,21 @@ function Customers() {
           </p>
         </div>
 
-        <button
-          className="primary-button"
-          onClick={openCreateModal}
-        >
-          <Plus size={18} />
-          Add Customer
-        </button>
+        <div className="page-title-actions">
+          <button className="secondary-button" type="button" onClick={downloadTemplate}>
+            <FileDown size={17} /> Excel template
+          </button>
+          <button className="secondary-button" type="button" onClick={() => importInput.current?.click()} disabled={importing}>
+            <Upload size={17} /> {importing ? "Importing..." : "Import Excel"}
+          </button>
+          <input ref={importInput} className="visually-hidden-input" type="file" accept=".xlsx" onChange={importCustomers} />
+          <button className="primary-button" onClick={openCreateModal}>
+            <Plus size={18} /> Add Customer
+          </button>
+        </div>
       </div>
+
+      {importMessage && <div className="success-message" role="status">{importMessage}</div>}
 
       <div className="toolbar">
         <div className="search-box">
@@ -478,3 +530,12 @@ function UsersEmpty() {
 }
 
 export default Customers;
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

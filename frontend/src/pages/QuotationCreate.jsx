@@ -11,7 +11,8 @@ import {
 import api from "../services/api";
 
 function Quotations() {
-  const today = new Date().toISOString().split("T")[0];
+  const localToday = new Date();
+  const today = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, "0")}-${String(localToday.getDate()).padStart(2, "0")}`;
 
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
